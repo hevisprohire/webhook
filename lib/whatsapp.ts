@@ -1,3 +1,5 @@
+import { normalizeMobileForOtp } from './otp-store'
+
 export class WhatsAppApiError extends Error {
   status: number
   body: string
@@ -73,7 +75,7 @@ export async function sendWhatsappOtp(
   const url = new URL(apiUrl)
   url.searchParams.set('api_key', apiKey)
 
-  const to = mobile.replace(/\s/g, '')
+  const to = mobile.startsWith('+') ? mobile.replace(/\s/g, '') : `+${normalizeMobileForOtp(mobile)}`
 
   const payload: Record<string, unknown> = {
     sender,

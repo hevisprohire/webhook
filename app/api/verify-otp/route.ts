@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isRedisConfigured, verifyOtp as verifyStoredOtp } from '@/lib/otp-store'
+import {
+  getOtpDebugInfo,
+  hasPendingOtp,
+  isRedisConfigured,
+  normalizeMobileForOtp,
+  verifyOtp as verifyStoredOtp,
+} from '@/lib/otp-store'
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,17 +26,34 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const normalizedMobile = mobile.replace(/\s/g, '')
-    const isValid = await verifyStoredOtp(normalizedMobile, otp.trim())
+    const normalizedMobile = normalizeMobileForOtp(mobile)
+    const isValid = await verifyStoredOtp(normalizedMobile, otp)
 
     if (!isValid) {
+      const debug = getOtpDebugInfo(normalizedMobile)
+      const pending = await hasPendingOtp(normalizedMobile)
+
+      let hint = isRedisConfigured()
+        ? 'Use the same Vercel URL for send-otp and verify-otp with the same mobile.'
+        : 'Redis not configured on this server — set UPSTASH env on Vercel and redeploy.'
+
+      if (pending) {
+        hint =
+          'OTP is waiting in Redis but the code does not match. sms4power may send its own OTP — confirm WhatsApp code matches what /api/send-otp stored, or ask sms4power for OTP verify API.'
+      } else if (isRedisConfigured()) {
+        hint =
+          'No OTP found for this mobile — call /api/send-otp first on the same URL, use mobileKey below, and verify within 5 minutes.'
+      }
+
       return NextResponse.json(
         {
           success: false,
           message: 'Invalid or expired OTP',
-          hint: isRedisConfigured()
-            ? 'Check same mobile as send-otp and use /api/send-otp (not direct sms4power Postman).'
-            : 'Redis not configured — OTP is in server memory only; set UPSTASH env on Vercel and redeploy.',
+          hint,
+          debug: {
+            ...debug,
+            otpPending: pending,
+          },
         },
         { status: 400 }
       )
