@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateOtp, saveOtp } from '@/lib/otp-store'
+import { generateOtp, isRedisConfigured, saveOtp } from '@/lib/otp-store'
 import { sendWhatsappOtp, WhatsAppApiError } from '@/lib/whatsapp'
 
 export async function POST(req: NextRequest) {
@@ -14,26 +14,29 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const normalizedMobile = mobile.replace(/\s/g, '')
     const otp = generateOtp()
-    await saveOtp(mobile, otp)
-    console.log(`Generated OTP for ${mobile}: ${otp}`)
 
     const devMode = process.env.WHATSAPP_DEV_MODE === 'true'
 
     if (devMode) {
+      await saveOtp(normalizedMobile, otp)
       return NextResponse.json({
         success: true,
         message:
           'Dev mode: OTP generated locally (WhatsApp skipped until Meta approves template)',
         devOtp: otp,
+        storage: isRedisConfigured() ? 'redis' : 'memory',
       })
     }
 
-    await sendWhatsappOtp(mobile, otp)
+    const { otpToStore } = await sendWhatsappOtp(normalizedMobile, otp)
+    await saveOtp(normalizedMobile, otpToStore)
 
     return NextResponse.json({
       success: true,
       message: 'OTP sent successfully',
+      storage: isRedisConfigured() ? 'redis' : 'memory',
     })
   } catch (error) {
     console.error(error)

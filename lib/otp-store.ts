@@ -1,4 +1,4 @@
-import { getRedis } from './redis'
+import { getRedis, isRedisConfigured } from './redis'
 
 const OTP_TTL_SECONDS = 5 * 60
 const OTP_KEY_PREFIX = 'hevis:otp:'
@@ -36,14 +36,17 @@ export async function saveOtp(mobile: string, otp: string) {
   })
 }
 
+export { isRedisConfigured }
+
 export async function verifyOtp(mobile: string, otp: string): Promise<boolean> {
+  const normalizedOtp = otp.trim()
   const redis = getRedis()
 
   if (redis) {
     const key = otpKey(mobile)
     const stored = await redis.get<string>(key)
 
-    if (!stored || stored !== otp) {
+    if (!stored || stored !== normalizedOtp) {
       return false
     }
 
@@ -62,7 +65,7 @@ export async function verifyOtp(mobile: string, otp: string): Promise<boolean> {
     return false
   }
 
-  if (entry.otp !== otp) {
+  if (entry.otp !== normalizedOtp) {
     return false
   }
 

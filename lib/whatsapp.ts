@@ -10,7 +10,51 @@ export class WhatsAppApiError extends Error {
   }
 }
 
-export async function sendWhatsappOtp(mobile: string, otp: string) {
+export type SendWhatsappOtpResult = {
+  providerResponse: unknown
+  /** OTP to store for verify — provider may return a different code than we generated */
+  otpToStore: string
+}
+
+function extractOtpFromProviderResponse(
+  data: unknown,
+  fallback: string,
+): string {
+  if (!data || typeof data !== 'object') {
+    return fallback
+  }
+
+  const root = data as Record<string, unknown>
+
+  const candidates: unknown[] = [
+    root.otp,
+    root.code,
+    (root.sample as Record<string, unknown> | undefined)?.otp,
+    (root.data as Record<string, unknown> | undefined)?.otp,
+  ]
+
+  const results = root.results
+  if (Array.isArray(results) && results[0] && typeof results[0] === 'object') {
+    const first = results[0] as Record<string, unknown>
+    candidates.push(first.otp, first.code)
+  }
+
+  for (const value of candidates) {
+    if (typeof value === 'string' && /^\d{4,8}$/.test(value.trim())) {
+      return value.trim()
+    }
+    if (typeof value === 'number' && value >= 1000 && value <= 99999999) {
+      return String(value)
+    }
+  }
+
+  return fallback
+}
+
+export async function sendWhatsappOtp(
+  mobile: string,
+  otp: string,
+): Promise<SendWhatsappOtpResult> {
   const apiUrl =
     process.env.WHATSAPP_OTP_API_URL ??
     'https://wtpapi.sms4power.com/api/v1/whatsapp/otp'
@@ -72,5 +116,7 @@ export async function sendWhatsappOtp(mobile: string, otp: string) {
     )
   }
 
-  return data
+  const otpToStore = extractOtpFromProviderResponse(data, otp)
+
+  return { providerResponse: data, otpToStore }
 }

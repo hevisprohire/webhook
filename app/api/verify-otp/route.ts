@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyOtp as verifyStoredOtp } from '@/lib/otp-store'
+import { isRedisConfigured, verifyOtp as verifyStoredOtp } from '@/lib/otp-store'
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,11 +20,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const isValid = await verifyStoredOtp(mobile, otp)
+    const normalizedMobile = mobile.replace(/\s/g, '')
+    const isValid = await verifyStoredOtp(normalizedMobile, otp.trim())
 
     if (!isValid) {
       return NextResponse.json(
-        { success: false, message: 'Invalid or expired OTP' },
+        {
+          success: false,
+          message: 'Invalid or expired OTP',
+          hint: isRedisConfigured()
+            ? 'Check same mobile as send-otp and use /api/send-otp (not direct sms4power Postman).'
+            : 'Redis not configured — OTP is in server memory only; set UPSTASH env on Vercel and redeploy.',
+        },
         { status: 400 }
       )
     }
