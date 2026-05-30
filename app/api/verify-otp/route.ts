@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const isValid = verifyStoredOtp(mobile, otp)
+    const isValid = await verifyStoredOtp(mobile, otp)
 
     if (!isValid) {
       return NextResponse.json(

@@ -1,0 +1,168 @@
+{
+  "info": {
+    "name": "Hevis WhatsApp OTP",
+    "_postman_id": "a8c3f1e2-4b9d-4a1c-9f2e-whatsapp-otp-hevis",
+    "description": "WhatsApp OTP demo app + direct sms4power API.\n\n**Local app** (run `npm run dev` in `hevis/whatsapp`):\n1. Send OTP → stores OTP in memory, calls sms4power\n2. Verify OTP → checks stored OTP (5 min TTL)\n\n**Direct sms4power** — same payload as `lib/whatsapp.ts` (OTP endpoint).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "sms4powerOtpUrl",
+      "value": "https://wtpapi.sms4power.com/api/v1/whatsapp/otp"
+    },
+    {
+      "key": "apiKey",
+      "value": "YOUR_WHATSAPP_API_KEY"
+    },
+    {
+      "key": "sender",
+      "value": "+919582606294"
+    },
+    {
+      "key": "templateId",
+      "value": "login_for_web_app_ekmfafe9ov9siwy6"
+    },
+    {
+      "key": "mobile",
+      "value": "+919336237922"
+    },
+    {
+      "key": "otp",
+      "value": "123456"
+    }
+  ],
+  "item": [
+    {
+      "name": "Local app (Next.js)",
+      "item": [
+        {
+          "name": "Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"{{mobile}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/send-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "send-otp"]
+            },
+            "description": "Generates 6-digit OTP, saves in server memory, sends via sms4power OTP API.\n\nSet `WHATSAPP_DEV_MODE=true` in `.env.local` to skip WhatsApp and return `devOtp` in response."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": \"{{otp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "verify-otp"]
+            },
+            "description": "Verifies OTP against in-memory store for the same mobile (normalized). OTP expires after 5 minutes."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "sms4power (direct)",
+      "item": [
+        {
+          "name": "Send OTP (whatsapp/otp)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "accept",
+                "value": "*/*"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sender\": \"{{sender}}\",\n  \"to\": \"{{mobile}}\",\n  \"template_id\": \"{{templateId}}\",\n  \"sample\": {\n    \"otp\": \"{{otp}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{sms4powerOtpUrl}}?api_key={{apiKey}}",
+              "host": ["{{sms4powerOtpUrl}}"],
+              "query": [
+                {
+                  "key": "api_key",
+                  "value": "{{apiKey}}"
+                }
+              ]
+            },
+            "description": "Direct call to sms4power OTP endpoint (same as `lib/whatsapp.ts`).\n\nOptional body fields: `pr1` … `pr5` if your template requires extra parameters."
+          },
+          "response": []
+        },
+        {
+          "name": "Send OTP with pr1–pr5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "accept",
+                "value": "*/*"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sender\": \"{{sender}}\",\n  \"to\": \"{{mobile}}\",\n  \"template_id\": \"{{templateId}}\",\n  \"sample\": {\n    \"otp\": \"{{otp}}\"\n  },\n  \"pr1\": \"string\",\n  \"pr2\": \"string\",\n  \"pr3\": \"string\",\n  \"pr4\": \"string\",\n  \"pr5\": \"string\"\n}"
+            },
+            "url": {
+              "raw": "{{sms4powerOtpUrl}}?api_key={{apiKey}}",
+              "host": ["{{sms4powerOtpUrl}}"],
+              "query": [
+                {
+                  "key": "api_key",
+                  "value": "{{apiKey}}"
+                }
+              ]
+            },
+            "description": "Use when your approved OTP template needs additional parameters pr1–pr5."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
     }
 
     const otp = generateOtp()
-    saveOtp(mobile, otp)
+    await saveOtp(mobile, otp)
+    console.log(`Generated OTP for ${mobile}: ${otp}`)
 
     const devMode = process.env.WHATSAPP_DEV_MODE === 'true'
 

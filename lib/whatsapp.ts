@@ -11,13 +11,15 @@ export class WhatsAppApiError extends Error {
 }
 
 export async function sendWhatsappOtp(mobile: string, otp: string) {
-  const apiUrl = process.env.WHATSAPP_API_URL
+  const apiUrl =
+    process.env.WHATSAPP_OTP_API_URL ??
+    'https://wtpapi.sms4power.com/api/v1/whatsapp/otp'
   const apiKey = process.env.WHATSAPP_API_KEY
   const sender = process.env.WHATSAPP_SENDER
   const templateId = process.env.WHATSAPP_TEMPLATE_ID
 
-  if (!apiUrl || !apiKey) {
-    throw new Error('WhatsApp API credentials are not configured')
+  if (!apiKey) {
+    throw new Error('WHATSAPP_API_KEY is not configured')
   }
 
   if (!sender || !templateId) {
@@ -28,24 +30,29 @@ export async function sendWhatsappOtp(mobile: string, otp: string) {
   url.searchParams.set('api_key', apiKey)
 
   const to = mobile.replace(/\s/g, '')
-  const supportContact =
-    process.env.WHATSAPP_SUPPORT_CONTACT ?? 'our support team'
 
-  // sms4power maps {{1}} → bodyvar0, {{2}} → bodyvar1
+  const payload: Record<string, unknown> = {
+    sender,
+    to,
+    template_id: templateId,
+    sample: { otp },
+  }
+
+  const optionalParams = ['pr1', 'pr2', 'pr3', 'pr4', 'pr5'] as const
+  for (const key of optionalParams) {
+    const value = process.env[`WHATSAPP_OTP_${key.toUpperCase()}`]
+    if (value?.trim()) {
+      payload[key] = value.trim()
+    }
+  }
+
   const response = await fetch(url.toString(), {
     method: 'POST',
     headers: {
       accept: '*/*',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      message_type: 'text',
-      sender,
-      to,
-      template_id: templateId,
-      bodyvar0: otp,
-      bodyvar1: supportContact,
-    }),
+    body: JSON.stringify(payload),
   })
 
   const text = await response.text()
