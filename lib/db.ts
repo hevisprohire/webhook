@@ -38,6 +38,46 @@ export function getPool(): mysql.Pool {
   return global.mysqlPool
 }
 
+export type WebhookLog = {
+  id: number
+  payload: unknown
+  createdAt: string
+}
+
+function parseStoredPayload(value: unknown): unknown {
+  if (value == null) return null
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as unknown
+    } catch {
+      return value
+    }
+  }
+  if (Buffer.isBuffer(value)) {
+    return JSON.parse(value.toString('utf8')) as unknown
+  }
+  return value
+}
+
+export async function listWebhookLogs(limit = 50): Promise<WebhookLog[]> {
+  const pool = getPool()
+  const safeLimit = Math.min(Math.max(limit, 1), 100)
+
+  const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+    'SELECT id, payload, created_at FROM webhook_logs ORDER BY id DESC LIMIT ?',
+    [safeLimit]
+  )
+
+  return rows.map((row) => ({
+    id: Number(row.id),
+    payload: parseStoredPayload(row.payload),
+    createdAt:
+      row.created_at instanceof Date
+        ? row.created_at.toISOString()
+        : String(row.created_at),
+  }))
+}
+
 export async function insertWebhookPayload(payload: object): Promise<number> {
   const pool = getPool()
   const [result] = await pool.execute<mysql.ResultSetHeader>(

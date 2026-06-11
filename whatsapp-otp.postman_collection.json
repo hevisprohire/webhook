@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "Hevis WhatsApp OTP",
+    "name": "Hevis WhatsApp App APIs",
     "_postman_id": "a8c3f1e2-4b9d-4a1c-9f2e-whatsapp-otp-hevis",
-    "description": "WhatsApp OTP demo app + direct sms4power API.\n\n**Local app** (run `npm run dev` in `hevis/whatsapp`):\n1. Send OTP → stores OTP in memory, calls sms4power\n2. Verify OTP → checks stored OTP (5 min TTL)\n\n**Direct sms4power** — same payload as `lib/whatsapp.ts` (OTP endpoint).",
+    "description": "Next.js app APIs only (`hevis/whatsapp`).\n\nRun locally: `npm run dev` → `{{baseUrl}}`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -11,24 +11,8 @@
       "value": "http://localhost:3000"
     },
     {
-      "key": "sms4powerOtpUrl",
-      "value": "https://wtpapi.sms4power.com/api/v1/whatsapp/otp"
-    },
-    {
-      "key": "apiKey",
-      "value": "YOUR_WHATSAPP_API_KEY"
-    },
-    {
-      "key": "sender",
-      "value": "+919582606294"
-    },
-    {
-      "key": "templateId",
-      "value": "login_for_web_app_ekmfafe9ov9siwy6"
-    },
-    {
       "key": "mobile",
-      "value": "+919336237922"
+      "value": "9876543210"
     },
     {
       "key": "otp",
@@ -37,132 +21,84 @@
   ],
   "item": [
     {
-      "name": "Local app (Next.js)",
-      "item": [
-        {
-          "name": "Send OTP",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"mobile\": \"{{mobile}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/send-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "send-otp"]
-            },
-            "description": "Generates 6-digit OTP, saves in server memory, sends via sms4power OTP API.\n\nSet `WHATSAPP_DEV_MODE=true` in `.env.local` to skip WhatsApp and return `devOtp` in response."
+      "name": "Send OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
           },
-          "response": []
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": \"{{otp}}\"\n}"
         },
-        {
-          "name": "Verify OTP",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": \"{{otp}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/verify-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "verify-otp"]
-            },
-            "description": "Verifies OTP against in-memory store for the same mobile (normalized). OTP expires after 5 minutes."
-          },
-          "response": []
-        }
-      ]
+        "url": {
+          "raw": "{{baseUrl}}/api/send-otp",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "send-otp"]
+        },
+        "description": "Sends a 6-digit OTP to the given mobile via WhatsApp. OTP must be provided in the request.\n\n**Response:** `{ \"success\": true }`"
+      },
+      "response": []
     },
     {
-      "name": "sms4power (direct)",
-      "item": [
-        {
-          "name": "Send OTP (whatsapp/otp)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "accept",
-                "value": "*/*"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"sender\": \"{{sender}}\",\n  \"to\": \"{{mobile}}\",\n  \"template_id\": \"{{templateId}}\",\n  \"sample\": {\n    \"otp\": \"{{otp}}\"\n  }\n}"
-            },
-            "url": {
-              "raw": "{{sms4powerOtpUrl}}?api_key={{apiKey}}",
-              "host": ["{{sms4powerOtpUrl}}"],
-              "query": [
-                {
-                  "key": "api_key",
-                  "value": "{{apiKey}}"
-                }
-              ]
-            },
-            "description": "Direct call to sms4power OTP endpoint (same as `lib/whatsapp.ts`).\n\nOptional body fields: `pr1` … `pr5` if your template requires extra parameters."
+      "name": "WhatsApp Webhook",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
           },
-          "response": []
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"object\": \"whatsapp_business_account\",\n  \"entry\": [\n    {\n      \"id\": \"123456789\",\n      \"changes\": [\n        {\n          \"value\": {\n            \"messaging_product\": \"whatsapp\",\n            \"metadata\": {\n              \"display_phone_number\": \"15550000000\",\n              \"phone_number_id\": \"123456789\"\n            },\n            \"messages\": [\n              {\n                \"from\": \"919876543210\",\n                \"id\": \"wamid.test\",\n                \"timestamp\": \"1710000000\",\n                \"type\": \"text\",\n                \"text\": {\n                  \"body\": \"Hello\"\n                }\n              }\n            ]\n          },\n          \"field\": \"messages\"\n        }\n      ]\n    }\n  ]\n}"
         },
-        {
-          "name": "Send OTP with pr1–pr5",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "accept",
-                "value": "*/*"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"sender\": \"{{sender}}\",\n  \"to\": \"{{mobile}}\",\n  \"template_id\": \"{{templateId}}\",\n  \"sample\": {\n    \"otp\": \"{{otp}}\"\n  },\n  \"pr1\": \"string\",\n  \"pr2\": \"string\",\n  \"pr3\": \"string\",\n  \"pr4\": \"string\",\n  \"pr5\": \"string\"\n}"
-            },
-            "url": {
-              "raw": "{{sms4powerOtpUrl}}?api_key={{apiKey}}",
-              "host": ["{{sms4powerOtpUrl}}"],
-              "query": [
-                {
-                  "key": "api_key",
-                  "value": "{{apiKey}}"
-                }
-              ]
-            },
-            "description": "Use when your approved OTP template needs additional parameters pr1–pr5."
-          },
-          "response": []
-        }
-      ]
+        "url": {
+          "raw": "{{baseUrl}}/api/whatsapp/webhook",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "whatsapp", "webhook"]
+        },
+        "description": "Receives WhatsApp webhook payload and saves it to MySQL `webhook_logs` table.\n\n**Response:** `{ \"success\": true, \"id\": <insertId> }`"
+      },
+      "response": []
+    },
+    {
+      "name": "List Webhook Logs",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/webhook-logs?limit=50",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "webhook-logs"],
+          "query": [
+            {
+              "key": "limit",
+              "value": "50",
+              "description": "Max 100"
+            }
+          ]
+        },
+        "description": "Returns saved webhook payloads from the database (parsed JSON).\n\n**Response:** `{ \"success\": true, \"logs\": [...] }`"
+      },
+      "response": []
     }
   ]
 }

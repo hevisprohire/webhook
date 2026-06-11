@@ -1,57 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { corsPreflightResponse, jsonWithCors } from '@/lib/cors'
 import {
-  generateOtp,
-  getOtpDebugInfo,
-  hasPendingOtp,
-  isRedisConfigured,
   normalizeMobileForOtp,
-  saveOtp,
-} from '@/lib/otp-store'
-import { sendWhatsappOtp, WhatsAppApiError } from '@/lib/whatsapp'
+  sendWhatsappOtp,
+  WhatsAppApiError,
+} from '@/lib/whatsapp'
+
+export async function OPTIONS(req: NextRequest) {
+  return corsPreflightResponse(req)
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { mobile } = body
+    const { mobile, otp } = body
 
     if (!mobile || typeof mobile !== 'string') {
-      return NextResponse.json(
+      return jsonWithCors(
+        req,
         { success: false, message: 'Mobile number required' },
         { status: 400 }
       )
     }
 
-    const normalizedMobile = normalizeMobileForOtp(mobile)
-    const otp = generateOtp()
-
-    const devMode = process.env.WHATSAPP_DEV_MODE === 'true'
-
-    if (devMode) {
-      await saveOtp(normalizedMobile, otp)
-      return NextResponse.json({
-        success: true,
-        message:
-          'Dev mode: OTP generated locally (WhatsApp skipped until Meta approves template)',
-        devOtp: otp,
-        storage: isRedisConfigured() ? 'redis' : 'memory',
-        mobileKey: normalizedMobile,
-      })
+    if (!otp || typeof otp !== 'string' || !/^\d{6}$/.test(otp.trim())) {
+      return jsonWithCors(
+        req,
+        { success: false, message: 'Valid 6-digit OTP required' },
+        { status: 400 }
+      )
     }
 
-    const { otpToStore } = await sendWhatsappOtp(normalizedMobile, otp)
-    await saveOtp(normalizedMobile, otpToStore)
+    const normalizedMobile = normalizeMobileForOtp(mobile)
+    await sendWhatsappOtp(normalizedMobile, otp.trim())
 
-    return NextResponse.json({
-      success: true,
-      message: 'OTP sent successfully',
-      storage: isRedisConfigured() ? 'redis' : 'memory',
-      mobileKey: normalizedMobile,
-    })
+    return jsonWithCors(req, { success: true })
   } catch (error) {
     console.error(error)
 
     if (error instanceof WhatsAppApiError) {
-      return NextResponse.json(
+      return jsonWithCors(
+        req,
         {
           success: false,
           message: error.message,
@@ -60,7 +49,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    return NextResponse.json(
+    return jsonWithCors(
+      req,
       { success: false, message: 'Internal server error' },
       { status: 500 }
     )
